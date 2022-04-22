@@ -91,6 +91,7 @@ while process_running "${pid}"; do
 
 done | command dialog --title "[Step 4/${steps}] Finalizing" --gauge "Adding Intro/Ending" 7 70 0
 
-ffmpeg -i "${output}.mp4" -vn -acodec copy "${output}.mp3"
+rm -f "${output}.mp3"
+ffmpeg -i "${output}.mp4" -vn -acodec mp3 "${output}.mp3"
 
 $(dialog_info "Successfully generated ${output}")
