@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+PATH="${PWD}/.ebash/bin:${PATH}"
+$(ebash --source --color --interactive)
+
+pkg_install    \
+    ffmpeg     \
+    pv         \
+    youtube-dl \

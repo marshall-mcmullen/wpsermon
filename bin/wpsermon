@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+
+PATH="${PWD}/.ebash/bin:${PATH}"
+$(ebash --source --color --interactive)
+TOPDIR=$(readlink -e $(dirname $0)/..)
+trap_add "reset"
+
+# Create a temporary directory to hold everything
+tmpdir=$(mktemp --tmpdir --directory wpsermon-XXXXXX)
+trap_add "rm -rf ${tmpdir}"
+
+# Variables
+steps=4
+
+# Prompt for video URL and start offset
+$(dialog_prompt \
+    --backtitle "Whispering Pines Church Sermon"                        \
+    --title "Please provide the following information about the sermon" \
+    --geometry "23 70 70"                                               \
+    url                                                                 \
+    start_time                                                          \
+    output="${HOME}/desktop/sermon"                                     \
+)
+
+# Use youtube-dl to get the two URLs for this sermon. The first URL is the VIDEO and the second is the AUDIO.
+command_exists youtube-dl
+urls=( $(youtube-dl -g "${url}") )
+assert_eq 2 "$(array_size urls)"
+
+#---- STEP1: Fetch VIDEO stream
+stdbuf -o0 -e0 curl -#L "${urls[0]}" -o "${tmpdir}/video.mp4" 2>&1  \
+    | tr '\r' '\n'                                       \
+    | sed --unbuffered -e 's|#* *\([0-9]*\)\.[0-9]*%|\1|'           \
+    | grep --line-buffered '^[0-9]*'                                \
+    | command dialog --title "[Step 1/${steps}] Downloading Video" --gauge "Downloading Video" 7 70 0
+
+#---- STEP2: Fetch AUDIO stream
+stdbuf -o0 -e0 curl -#L "${urls[1]}" -o "${tmpdir}/audio.mp4" 2>&1  \
+    | tr '\r' '\n'                                                  \
+    | sed --unbuffered -e 's|#* *\([0-9]*\)\.[0-9]*%|\1|'           \
+    | grep --line-buffered '^[0-9]*'                                \
+    | command dialog --title "[Step 2/${steps}] Downloading Audio" --gauge "Downloading Audio" 7 70 0
+
+#---- STEP3: Remove pre-sermon content
+( pv -n "${HOME}/audio.mp4"   \
+    | ffmpeg -v error         \
+      -ss "${start_time}"     \
+      -i pipe:0               \
+      -ss "${start_time}"     \
+      -i "${HOME}/video.mp4"  \
+      -c copy                 \
+      "${tmpdir}/trimmed.mp4" \
+) |& command dialog --title "[Step 3/${steps}] Editing Video" --gauge "Removing pre-sermon content" 7 70 0
+
+#---- STEP4: Add INTRO and ENDING content
+# For progress bar, we need to get the total number of frames in the 3 input videos.
+total_frames=0
+videos=(
+    "${TOPDIR}/assets/intro.mp4"
+    "${tmpdir}/trimmed.mp4"
+    "${TOPDIR}/assets/ending.mp4"
+)
+
+for video in "${videos[@]}"; do
+    increment total_frames $(ffprobe -v error -select_streams v:0 -count_packets -show_entries stream=nb_read_packets -of csv=p=0 "${video}")
+done
+
+rm -f "${output}.mp4"
+ffmpeg -v error                         \
+    -vsync 0                            \
+    -i "${TOPDIR}/assets/intro.mp4"     \
+    -i "${tmpdir}/trimmed.mp4"          \
+    -i "${TOPDIR}/assets/ending.mp4"    \
+    -filter_complex "[0:v:0][0:a:0][1:v:0][1:a:0][2:v:0][2:a:0]concat=n=3:v=1:a=1[outv][outa]" \
+    -map "[outv]" -map "[outa]"         \
+    -progress "${tmpdir}/progress.txt"  \
+    "${output}.mp4" &
+pid=$!
+
+# Monitor encoding process
+while process_running "${pid}"; do
+
+    frame=$(grep -Po "frame=\K.*" "${tmpdir}/progress.txt" 2>/dev/null | tail -1 || true)
+
+    if [[ -n "${frame}" ]]; then
+        percent=$(echo "scale=4; ${frame} / ${total_frames} * 100" | bc | sed 's|\..*||')
+        echo "${percent}"
+    fi
+
+    sleep 1
+
+done | command dialog --title "[Step 4/${steps}] Finalizing" --gauge "Adding Intro/Ending" 7 70 0
+
+ffmpeg -i "${output}.mp4" -vn -acodec copy "${output}.mp3"
+
+$(dialog_info "Successfully generated ${output}")

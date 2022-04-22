@@ -1,0 +1,3 @@
+[submodule ".ebash"]
+	path = .ebash
+	url = https://github.com/elibs/ebash.git
