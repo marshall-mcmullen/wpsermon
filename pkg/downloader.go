@@ -2,7 +2,6 @@ package pkg
 
 import (
 	// STDLIB
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -10,8 +9,6 @@ import (
 	"sync"
 
 	// External
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -80,27 +77,14 @@ func DownloadAVFiles(data *Data) {
 	audio := &DownloadFile{
 		URL: data.AudioUrl,
 		Output: data.AudioPath,
-		Progress: widget.NewProgressBar(),
+		Progress: data.AudioProgress,
 	}
 
 	video := &DownloadFile{
 		URL: data.VideoUrl,
 		Output: data.VideoPath,
-		Progress: widget.NewProgressBar(),
+		Progress: data.VideoProgress,
 	}
-
-	window := fyne.CurrentApp().NewWindow("Downloading")
-	window.SetContent(container.NewVBox(
-		audio.Progress,
-		video.Progress,
-	))
-	window.Resize(fyne.NewSize(300, 300))
-	window.CenterOnScreen()
-	window.Show()
-	window.SetCloseIntercept(func() {
-		window.Close()
-		CheckError(fmt.Errorf("Download cancelled"))
-	})
 
 	waitGroup.Add(1)
 	go func() {
@@ -115,5 +99,4 @@ func DownloadAVFiles(data *Data) {
 	}()
 
 	waitGroup.Wait()
-	window.Close()
 }

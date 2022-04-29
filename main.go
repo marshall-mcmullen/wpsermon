@@ -3,9 +3,7 @@ package main
 import (
 
 	// STDLIB
-	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	// External
 	"fyne.io/fyne/v2"
@@ -19,41 +17,91 @@ import (
 	"github.com/marshall-mcmullen/wpsermon/pkg"
 )
 
+var data *pkg.Data
+
 func main() {
 
-	// Setup
 	log.SetFormatter(&log.JSONFormatter{})
+	log.SetReportCaller(true)
 
+	// MAIN application window
 	application := app.New()
 	window := application.NewWindow("main")
 	window.CenterOnScreen()
-
-	image := canvas.NewImageFromFile("assets/WPC_logo_green_stacked.png")
+	image := canvas.NewImageFromFile("assets/WPC_logo_brown_stacked.png")
 	image.FillMode = canvas.ImageFillOriginal
-	button := widget.NewButton("Download Sermon", func() { process(window); })
 
-	window.SetContent(container.NewVBox(image, button))
+	// Data
+	data = pkg.NewData()
+	defer data.Remove()
+
+	// Input prompt
+	window.SetContent(container.NewVBox(
+		image,
+		InputForm(window),
+		container.NewVBox(
+			widget.NewLabel("Downloading Audio/Video"),
+			data.AudioProgress,
+			data.VideoProgress,
+		),
+		container.NewVBox(
+			widget.NewLabel("Trimming"),
+			data.TrimProgress,
+		),
+		container.NewVBox(
+			widget.NewLabel("Finalizing"),
+			data.FinalProgress,
+		),
+	))
+
 	window.ShowAndRun()
 	os.Exit(0)
 }
 
-func process(window fyne.Window) {
+func InputForm(window fyne.Window) *widget.Form {
 
-	dir, err := ioutil.TempDir("", "wpsermon")
-	pkg.CheckError(err)
-	defer os.RemoveAll(dir)
+	url := widget.NewEntry()
+	start := widget.NewEntry()
+	stop := widget.NewEntry()
 
-	// PROMPT
-	window.Hide()
-	data := pkg.Prompt()
-	data.AudioPath = filepath.Join(dir, "audio.mp4")
-	data.VideoPath = filepath.Join(dir, "video.mp4")
 
-	// DOWNLOAD
-	window.Hide()
-	pkg.DownloadAVFiles(data)
+	return &widget.Form{
+		Items: []*widget.FormItem{
+			{
+				Text: "URL",
+				Widget: url,
 
-	// MODIFY
-	window.Hide()
-	pkg.Trim(data)
+			},
+			{
+				Text: "Start Time",
+				Widget: start,
+			},
+			{
+				Text: "Stop Time",
+				Widget: stop,
+			},
+		},
+		OnSubmit: func() {
+
+			data.InputUrl = url.Text
+			data.Start = start.Text
+			data.Stop = stop.Text
+
+			urls := pkg.GetURLs(data.InputUrl)
+			data.VideoUrl = urls[0]
+			data.AudioUrl = urls[1]
+			log.WithFields(log.Fields{
+				"data": data,
+			}).Info("Data")
+
+			pkg.DownloadAVFiles(data)
+			pkg.Trim(data)
+			pkg.Finalize(data)
+
+			widget.ShowModalPopUp(
+				widget.NewButton("Finished", func() { fyne.CurrentApp().Quit() }),
+				window.Canvas(),
+			)
+		},
+	}
 }
