@@ -109,6 +109,7 @@ func Finalize(data *Data) {
 
 	var waitGroup sync.WaitGroup
 
+	// Remaster Audio and Video and concatenate all streams
 	cmd := exec.Command("ffmpeg",
 		"-vsync", "0",
 		"-i", data.IntroPath,
@@ -122,16 +123,31 @@ func Finalize(data *Data) {
 		data.FinalVideoPath+".tmp",
 	)
 
+	// Extract Audio only
+	cmd2 := exec.Command("ffmpeg",
+		"-i", data.FinalVideoPath+".tmp",
+		"-vn",
+		"-acodec", "mp3",
+		"-f", "mp3",
+		data.FinalAudioPath+".tmp")
+
 	waitGroup.Add(1)
 	go func() {
+
+		// Video
 		err := cmd.Run()
 		CheckError(err)
+		os.Rename(data.FinalVideoPath+".tmp", data.FinalVideoPath)
+
+		// Audio
+		err = cmd2.Run()
+		CheckError(err)
+		os.Rename(data.FinalAudioPath+".tmp", data.FinalAudioPath)
+
 		waitGroup.Done()
 	}()
 
 	monitorProgress(cmd, data.FinalProgress, totalFrames)
 
 	waitGroup.Wait()
-
-	os.Rename(data.FinalVideoPath+".tmp", data.FinalVideoPath)
 }
