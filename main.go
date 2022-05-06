@@ -24,6 +24,8 @@ func main() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
 
+	//_, filename, _, _ := runtime.Caller(0)
+
 	// MAIN application window
 	application := app.New()
 	window := application.NewWindow("main")
