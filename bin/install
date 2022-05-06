@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 
-PATH="${PWD}/.ebash/bin:${PATH}"
-$(ebash --source --color --interactive)
+pkgs=(
+    "ffmpeg"
+    "youtube-dl"
+)
 
-pkg_install    \
-    ffmpeg     \
-    pv         \
-    youtube-dl \
+printf 'brew "%q"\n' "${pkgs[@]}" | brew bundle --file=/dev/stdin
