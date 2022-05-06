@@ -66,20 +66,18 @@ func InputForm(window fyne.Window) *widget.Form {
 	start := widget.NewEntry()
 	stop := widget.NewEntry()
 
-
 	return &widget.Form{
 		Items: []*widget.FormItem{
 			{
-				Text: "URL",
+				Text:   "URL",
 				Widget: url,
-
 			},
 			{
-				Text: "Start Time",
+				Text:   "Start Time",
 				Widget: start,
 			},
 			{
-				Text: "Stop Time",
+				Text:   "Stop Time",
 				Widget: stop,
 			},
 		},

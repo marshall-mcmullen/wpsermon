@@ -6,12 +6,12 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
-	"os"
 
 	// External
 	"fyne.io/fyne/v2/widget"

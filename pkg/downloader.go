@@ -5,7 +5,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 
 	// External
@@ -15,8 +17,8 @@ import (
 // ProgressWriter counts the number of bytes written to it. It implements to the io.Writer interface
 // and we can pass this into io.TeeReader() which will report progress on each write cycle.
 type ProgressWriter struct {
-	Total int
-	Current int
+	Total    int
+	Current  int
 	Progress *widget.ProgressBar
 }
 
@@ -33,9 +35,9 @@ func (wc ProgressWriter) PrintProgress() {
 }
 
 type DownloadFile struct {
-	URL string
-	Output string
-	Writer *ProgressWriter
+	URL      string
+	Output   string
+	Writer   *ProgressWriter
 	Progress *widget.ProgressBar
 }
 
@@ -49,7 +51,7 @@ func downloadSingleFile(file *DownloadFile) {
 
 	size, _ := strconv.Atoi(resp.Header.Get("Content-Length"))
 	file.Writer = &ProgressWriter{
-		Total: size,
+		Total:    size,
 		Progress: file.Progress,
 	}
 
@@ -75,14 +77,14 @@ func DownloadAVFiles(data *Data) {
 	var waitGroup sync.WaitGroup
 
 	audio := &DownloadFile{
-		URL: data.AudioUrl,
-		Output: data.AudioPath,
+		URL:      data.AudioUrl,
+		Output:   data.AudioPath,
 		Progress: data.AudioProgress,
 	}
 
 	video := &DownloadFile{
-		URL: data.VideoUrl,
-		Output: data.VideoPath,
+		URL:      data.VideoUrl,
+		Output:   data.VideoPath,
 		Progress: data.VideoProgress,
 	}
 
@@ -99,4 +101,13 @@ func DownloadAVFiles(data *Data) {
 	}()
 
 	waitGroup.Wait()
+}
+
+func GetURLs(url string) []string {
+
+	cmd := exec.Command("youtube-dl", "-g", url)
+	stdout, err := cmd.Output()
+	CheckError(err)
+
+	return strings.Split(string(stdout), "\n")
 }

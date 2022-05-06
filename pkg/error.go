@@ -1,7 +1,7 @@
 package pkg
 
 import (
-	// External
+// External
 )
 
 func CheckError(err error) {
@@ -10,4 +10,3 @@ func CheckError(err error) {
 		panic(err)
 	}
 }
-
