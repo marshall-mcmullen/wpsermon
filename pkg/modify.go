@@ -125,7 +125,7 @@ func Finalize(data *Data) {
 
 	// Extract Audio only
 	cmd2 := exec.Command("ffmpeg",
-		"-i", data.FinalVideoPath+".tmp",
+		"-i", data.FinalVideoPath,
 		"-vn",
 		"-acodec", "mp3",
 		"-f", "mp3",
