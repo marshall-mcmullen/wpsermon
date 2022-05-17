@@ -79,11 +79,11 @@ func Trim(data *Data) {
 
 	cmd := exec.Command("ffmpeg",
 		"-ss", data.Start,
+		"-to", data.Stop,
 		"-i", data.AudioPath,
-		"-to", data.Stop,
 		"-ss", data.Start,
-		"-i", data.VideoPath,
 		"-to", data.Stop,
+		"-i", data.VideoPath,
 		"-c", "copy",
 		"-progress", "/dev/stdout",
 		data.TrimmedPath,
