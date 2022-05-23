@@ -3,6 +3,7 @@ package main
 import (
 
 	// STDLIB
+	"fmt"
 	"os"
 
 	// External
@@ -24,12 +25,12 @@ func main() {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
 
-	//_, filename, _, _ := runtime.Caller(0)
+	// Setup PATH to include "/usr/local/bin" where brew installs things like youtube-dl and ffmpeg
+	os.Setenv("PATH", fmt.Sprintf("%s:/usr/local/bin", os.Getenv("PATH")))
 
 	// MAIN application window
 	application := app.New()
-	window := application.NewWindow("main")
-	window.CenterOnScreen()
+	window := application.NewWindow("WPC Sermon")
 	image := canvas.NewImageFromFile("assets/WPC_logo_brown_stacked.png")
 	image.FillMode = canvas.ImageFillOriginal
 
@@ -90,9 +91,6 @@ func InputForm(window fyne.Window) *widget.Form {
 			urls := pkg.GetURLs(data.InputUrl)
 			data.VideoUrl = urls[0]
 			data.AudioUrl = urls[1]
-			log.WithFields(log.Fields{
-				"data": data,
-			}).Info("Data")
 
 			pkg.DownloadAVFiles(data)
 			pkg.Trim(data)
