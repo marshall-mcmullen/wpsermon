@@ -105,7 +105,7 @@ func DownloadAVFiles(data *Data) {
 
 func GetURLs(url string) []string {
 
-	cmd := exec.Command("youtube-dl", "-g", url)
+	cmd := exec.Command("yt-dlp", "-g", url)
 	stdout, err := cmd.Output()
 	CheckError(err)
 

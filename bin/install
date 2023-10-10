@@ -2,7 +2,7 @@
 
 pkgs=(
     "ffmpeg"
-    "youtube-dl"
+    "yt-dlp"
 )
 
 printf 'brew "%q"\n' "${pkgs[@]}" | brew bundle --file=/dev/stdin
