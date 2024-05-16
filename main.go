@@ -58,6 +58,7 @@ func main() {
 		),
 	))
 
+	window.Resize(fyne.NewSize(800, 600))
 	window.ShowAndRun()
 	os.Exit(0)
 }
