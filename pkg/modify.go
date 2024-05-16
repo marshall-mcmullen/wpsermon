@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -15,7 +16,6 @@ import (
 
 	// External
 	"fyne.io/fyne/v2/widget"
-	log "github.com/sirupsen/logrus"
 )
 
 func getTotalFrames(video string) float64 {
@@ -40,20 +40,27 @@ func getTotalFrames(video string) float64 {
 	return totalFrames
 }
 
-func monitorProgress(cmd *exec.Cmd, progress *widget.ProgressBar, totalFrames float64) {
+func monitorProgress(cmd *exec.Cmd, data *Data, progress *widget.ProgressBar, totalFrames float64) {
 
 	exp := regexp.MustCompile("^frame=([0-9]+)")
 
-	pipe, _ := cmd.StdoutPipe()
-	reader := bufio.NewReader(pipe)
-	line, err := reader.ReadString('\n')
-	for err == nil {
-		line, err = reader.ReadString('\n')
-		if errors.Is(err, io.EOF) {
-			break
-		}
+	pipe, err := cmd.StdoutPipe()
+	cmd.Stderr = cmd.Stdout
+	CheckError(err)
+	defer pipe.Close()
 
-		CheckError(err)
+	reader := bufio.NewReader(pipe)
+	for {
+		line, err := reader.ReadString('\n')
+		fmt.Print(line)
+
+		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
+				break
+			}
+
+			CheckError(err)
+		}
 
 		matches := exp.FindStringSubmatch(line)
 
@@ -63,7 +70,6 @@ func monitorProgress(cmd *exec.Cmd, progress *widget.ProgressBar, totalFrames fl
 			CheckError(err)
 
 			percent := float64(frame) / float64(totalFrames)
-			log.Infof("Frame: %f/%f Percent=%f", frame, totalFrames, percent)
 			progress.SetValue(percent)
 		}
 	}
@@ -80,14 +86,12 @@ func Trim(data *Data) {
 	cmd := exec.Command("ffmpeg",
 		"-ss", data.Start,
 		"-to", data.Stop,
-		"-i", data.AudioPath,
-		"-ss", data.Start,
-		"-to", data.Stop,
 		"-i", data.VideoPath,
 		"-c", "copy",
 		"-progress", "/dev/stdout",
 		data.TrimmedPath,
 	)
+	printBanner(cmd.String())
 
 	waitGroup.Add(1)
 	go func() {
@@ -96,7 +100,7 @@ func Trim(data *Data) {
 		waitGroup.Done()
 	}()
 
-	monitorProgress(cmd, data.TrimProgress, totalFrames)
+	monitorProgress(cmd, data, data.TrimProgress, totalFrames)
 
 	waitGroup.Wait()
 }
@@ -115,13 +119,14 @@ func Finalize(data *Data) {
 		"-i", data.IntroPath,
 		"-i", data.TrimmedPath,
 		"-i", data.EndingPath,
-		"-filter_complex", "[0:v:0][0:a:0][1:v:0][1:a:0][2:v:0][2:a:0]concat=n=3:v=1:a=1[outv][outa]",
-		"-map", "[outv]",
-		"-map", "[outa]",
+		"-filter_complex", "[0:v]scale=1280x720[v0];[1:v]scale=1280x720[v1];[2:v]scale=1280x720[v2];[v0][0:a][v1][1:a][v2][2:a]concat=n=3:v=1:a=1[v][a]",
+		"-map", "[v]",
+		"-map", "[a]",
 		"-progress", "/dev/stdout",
 		"-f", "mp4",
 		data.FinalVideoPath+".tmp",
 	)
+	printBanner(cmd.String())
 
 	// Extract Audio only
 	cmd2 := exec.Command("ffmpeg",
@@ -129,17 +134,21 @@ func Finalize(data *Data) {
 		"-vn",
 		"-acodec", "mp3",
 		"-f", "mp3",
-		data.FinalAudioPath+".tmp")
+		data.FinalAudioPath+".tmp",
+	)
+	printBanner(cmd.String())
 
 	waitGroup.Add(1)
 	go func() {
 
 		// Video
+		os.Remove(data.FinalVideoPath + ".tmp")
 		err := cmd.Run()
 		CheckError(err)
 		os.Rename(data.FinalVideoPath+".tmp", data.FinalVideoPath)
 
 		// Audio
+		os.Remove(data.FinalAudioPath + ".tmp")
 		err = cmd2.Run()
 		CheckError(err)
 		os.Rename(data.FinalAudioPath+".tmp", data.FinalAudioPath)
@@ -147,7 +156,7 @@ func Finalize(data *Data) {
 		waitGroup.Done()
 	}()
 
-	monitorProgress(cmd, data.FinalProgress, totalFrames)
+	monitorProgress(cmd, data, data.FinalProgress, totalFrames)
 
 	waitGroup.Wait()
 }

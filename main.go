@@ -11,8 +11,8 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
-	log "github.com/sirupsen/logrus"
 
 	// Internal
 	"github.com/marshall-mcmullen/wpsermon/pkg"
@@ -22,9 +22,6 @@ var data *pkg.Data
 
 func main() {
 
-	log.SetFormatter(&log.JSONFormatter{})
-	log.SetReportCaller(true)
-
 	// Setup PATH to include "/usr/local/bin" where brew installs things like youtube-dl and ffmpeg
 	os.Setenv("PATH", fmt.Sprintf("%s:/usr/local/bin", os.Getenv("PATH")))
 
@@ -32,19 +29,23 @@ func main() {
 	application := app.New()
 	window := application.NewWindow("WPC Sermon")
 	image := canvas.NewImageFromFile("assets/WPC_logo_brown_stacked.png")
-	image.FillMode = canvas.ImageFillOriginal
+	image.FillMode = canvas.ImageFillContain
 
 	// Data
 	data = pkg.NewData()
 	defer data.Remove()
 
-	// Input prompt
+	// Setup image and input fields in a box
+	input := container.New(layout.NewGridLayoutWithColumns(2),
+		container.New(layout.NewMaxLayout(), image),
+		container.New(layout.NewVBoxLayout(), InputForm(window)),
+	)
+
+	// Input input
 	window.SetContent(container.NewVBox(
-		image,
-		InputForm(window),
+		input,
 		container.NewVBox(
-			widget.NewLabel("Downloading Audio/Video"),
-			data.AudioProgress,
+			widget.NewLabel("Downloading"),
 			data.VideoProgress,
 		),
 		container.NewVBox(
@@ -67,7 +68,7 @@ func InputForm(window fyne.Window) *widget.Form {
 	start := widget.NewEntry()
 	stop := widget.NewEntry()
 
-	return &widget.Form{
+	form := &widget.Form{
 		Items: []*widget.FormItem{
 			{
 				Text:   "URL",
@@ -82,24 +83,26 @@ func InputForm(window fyne.Window) *widget.Form {
 				Widget: stop,
 			},
 		},
-		OnSubmit: func() {
-
-			data.InputUrl = url.Text
-			data.Start = start.Text
-			data.Stop = stop.Text
-
-			urls := pkg.GetURLs(data.InputUrl)
-			data.VideoUrl = urls[0]
-			data.AudioUrl = urls[1]
-
-			pkg.DownloadAVFiles(data)
-			pkg.Trim(data)
-			pkg.Finalize(data)
-
-			widget.ShowModalPopUp(
-				widget.NewButton("Finished", func() { fyne.CurrentApp().Quit() }),
-				window.Canvas(),
-			)
-		},
 	}
+
+	form.OnSubmit = func() {
+
+		// Disable the form now that Submit was pressed.
+		form.Disable()
+
+		data.URL = url.Text
+		data.Start = start.Text
+		data.Stop = stop.Text
+
+		pkg.DownloadFile(data)
+		pkg.Trim(data)
+		pkg.Finalize(data)
+
+		widget.ShowModalPopUp(
+			widget.NewButton("\n\n        Finished       \n\n", func() { fyne.CurrentApp().Quit() }),
+			window.Canvas(),
+		)
+	}
+
+	return form
 }
