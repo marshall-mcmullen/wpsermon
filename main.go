@@ -45,7 +45,7 @@ func main() {
 
 	image.Move(fyne.NewPos(0, 0))
 	image.Resize(fyne.Size{200, 200})
-	formContainer.Move(fyne.NewPos(200, 25))
+	formContainer.Move(fyne.NewPos(225, 25))
 	formContainer.Resize(fyne.Size{700, 400})
 
 	spacer := widget.NewLabel("")
@@ -69,7 +69,7 @@ func main() {
 		),
 	))
 
-	window.Resize(fyne.NewSize(1000, 500))
+	window.Resize(fyne.NewSize(900, 500))
 	window.CenterOnScreen()
 	window.ShowAndRun()
 	os.Exit(0)
