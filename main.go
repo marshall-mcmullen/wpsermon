@@ -58,7 +58,7 @@ func main() {
 		),
 	))
 
-	window.Resize(fyne.NewSize(1000, 600))
+	window.Resize(fyne.NewSize(1000, 500))
 	window.CenterOnScreen()
 	window.ShowAndRun()
 	os.Exit(0)
