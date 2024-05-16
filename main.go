@@ -11,7 +11,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
 
 	// Internal
@@ -28,22 +27,34 @@ func main() {
 	// MAIN application window
 	application := app.New()
 	window := application.NewWindow("WPC Sermon")
-	image := canvas.NewImageFromFile("assets/WPC_logo_brown_stacked.png")
-	image.FillMode = canvas.ImageFillContain
 
 	// Data
 	data = pkg.NewData()
 	defer data.Remove()
 
+	// Image
+	image := canvas.NewImageFromFile("assets/WPC_logo_brown_stacked.png")
+	image.FillMode = canvas.ImageFillContain
+	formContainer := container.NewVBox(InputForm(window))
+
 	// Setup image and input fields in a box
-	input := container.New(layout.NewGridLayoutWithColumns(2),
-		container.New(layout.NewMaxLayout(), image),
-		container.New(layout.NewVBoxLayout(), InputForm(window)),
+	input := container.NewWithoutLayout(
+		image,
+		formContainer,
 	)
+
+	image.Move(fyne.NewPos(0, 0))
+	image.Resize(fyne.Size{200, 200})
+	formContainer.Move(fyne.NewPos(200, 25))
+	formContainer.Resize(fyne.Size{700, 400})
+
+	spacer := widget.NewLabel("")
+	spacer.Resize(fyne.Size{50, 100})
 
 	// Input input
 	window.SetContent(container.NewVBox(
 		input,
+		spacer,
 		container.NewVBox(
 			widget.NewLabel("Downloading"),
 			data.VideoProgress,
